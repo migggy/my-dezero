@@ -1,4 +1,5 @@
 import weakref
+import contextlib
 
 import numpy as np
 
@@ -63,10 +64,6 @@ def as_array(x):
     return x
 
 
-class Config:
-    enable_backprop = True
-
-
 class Function:
     def __call__(self, *inputs):
         xs = [x.data for x in inputs]
@@ -119,12 +116,30 @@ def add(x0, x1):
     return Add()(x0, x1)
 
 
+class Config:
+    enable_backprop = True
+
+
+@contextlib.contextmanager
+def using_config(name, value):
+    old_value = getattr(Config, name)
+    setattr(Config, name, value)
+    try:
+        yield
+    finally:
+        setattr(Config, name, old_value)
+
+
+def no_grad():
+    return using_config('enable_backprop', False)
+
+
 if __name__ == "__main__":
     Config.enable_backprop = True
     x = Variable(np.ones((100, 100, 100)))
     y = square(square(square(x)))
     y.backward()
 
-    Config.enable_backprop = False
-    x = Variable(np.ones((100, 100, 100)))
-    y = square(square(square(x)))
+    with no_grad():
+        x = Variable(np.array(2.0))
+        y = square(x)
